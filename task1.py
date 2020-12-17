@@ -4,7 +4,7 @@ import numpy as np
 import random
 import math
 import pandas as pd
-
+import time
 input1 = np.array([[0, 6, 4, 5],
                    [1, 3, 3, 9],
                    [4, 9, 2, 1],
@@ -59,7 +59,7 @@ def ant_colony_optimization(input):
     pheromone_grid = np.ones((row, col))
     gens = 40
     evap_rate = 0.7
-    ants = 1200
+    ants = 280
     alpha = 1.5
 
     def calculate_shortest_path(grid, pheromone_grid, evap_rate, gens, ants):
@@ -88,7 +88,7 @@ def ant_colony_optimization(input):
 
             shortest_path_found.append(np.min(ants_distances))
 
-            # pheromone_grid = (1 - evap_rate) * pheromone_grid + interim_grid
+            pheromone_grid = (1 - evap_rate) * pheromone_grid + interim_grid
 
         print("shortest path: ", np.min(
             shortest_path_found + grid[row - 1][col - 1] - grid[0][0]))
@@ -117,7 +117,7 @@ def ant_colony_optimization(input):
 
     def choose_node(current_node, potential_nodes):
         potential_nodes_sum = 0
-        # calculate sum of each possible node for the probability later
+        # calculate sum of each possible node for use in the main probability
         for (x, y) in potential_nodes:
             if x == current_node[0] + 1:
                 potential_nodes_sum += calculate_south(current_node)
@@ -236,8 +236,8 @@ def ant_colony_optimization(input):
 
 def heuristic(input):
     # np.random.seed(0)
-    size_x = 5
-    size_y = 5
+    size_x = input.shape[0] - 1
+    size_y = input.shape[1] - 1
     random_matrix = input
 
     time_spent = random_matrix[0, 0]
@@ -245,7 +245,6 @@ def heuristic(input):
     x = y = 0
 
     while x < size_x and y < size_y:
-        print((x, y), random_matrix[x, y])
 
         if x < size_x and y < size_y:
             look_right = random_matrix[x, y + 1]
@@ -266,15 +265,99 @@ def heuristic(input):
             time_spent += random_matrix[x + 1, y]
             x += 1
 
-    print((x, y), random_matrix[x, y])
-    print(time_spent)
-    print(random_matrix)
+    print("shortest path found: ", time_spent + input[-1][-1])
 
 
 def djikstra(input):
-    start = (0, 0)
+
+    grid = input
+
+    row = grid.shape[0]
+    col = grid.shape[1]
+
+    start_node = (0, 0)
+    end_node = (row - 1, col - 1)
+
+    current_node = start_node
+
+    distance_grid = np.ones((row, col))
+    distance_grid *= 99999
+    distance_grid[0][0] = 0
+
+    unvisited_nodes = set()
+
+    for x in range(row):
+        for y in range(col):
+            unvisited_nodes.add((x, y))
+
+    nodes_to_check = ((1, 0), (0, 1))
+
+    def get_distances_and_min(curr_node, nodes):
+
+        tentative_dist = []
+        nodes_to_list = []
+        for (x, y) in nodes:
+            tentative_dist.append(
+                distance_grid[curr_node[0]][curr_node[1]] + grid[x][y])
+            nodes_to_list.append((x, y))
+
+        # print("numar 1:", distance_grid[curr_node[0]]
+        #       [curr_node[1]] + grid[1][0])
+        # print("numar 2:", distance_grid[curr_node[0]]
+        #       [curr_node[1]] + grid[0][1])
+        # print("aici toati", tentative_dist)
+
+        smallest_node_index = tentative_dist.index(
+            min(tentative_dist))
+
+        return tentative_dist, nodes_to_list[smallest_node_index]
+
+    def update_nodes_to_check(curr_node):
+        updated_nodes = set()
+        x = curr_node[0]
+        y = curr_node[1]
+        if x + 1 < row and (x+1, y) in unvisited_nodes:
+            updated_nodes.add((x+1, y))
+        if x - 1 >= 0 and (x-1, y) in unvisited_nodes:
+            updated_nodes.add((x-1, y))
+        if y + 1 < col and (x, y + 1) in unvisited_nodes:
+            updated_nodes.add((x, y + 1))
+        if y - 1 >= 0 and (x, y - 1) in unvisited_nodes:
+            updated_nodes.add((x, y - 1))
+
+        return updated_nodes
+
+    while len(nodes_to_check) != 0:
+        tentative_distances, smallest_distance_node = get_distances_and_min(
+            current_node, nodes_to_check)
+
+        for node, distance in zip(nodes_to_check, tentative_distances):
+            if distance_grid[node[0]][node[1]] > distance:
+                distance_grid[node[0]][node[1]] = distance
+
+        unvisited_nodes.remove(current_node)
+
+        if end_node not in unvisited_nodes or min(tentative_distances) == 99999:
+            break
+
+        current_node = smallest_distance_node
+
+        nodes_to_check = update_nodes_to_check(current_node)
+
+    print("shortest path found: ", distance_grid[end_node[0]][end_node[1]])
+    print(distance_grid)
+    # print("algorithm finished \n {} \n {}".format(
+    #     distance_grid, distance_grid[end_node[0]][end_node[1]]))
 
 
-rand_input = np.random.randint(10, size=(5, 5))
+# rand_input = np.random.randint(10, size=(5, 5))
 # print(rand_input)
-ant_colony_optimization(input4)
+start = time.time()
+
+# ant_colony_optimization(input1)
+# heuristic(input1)
+djikstra(input1)
+
+end = time.time()
+
+print("time elapsed: {}".format(end - start))
